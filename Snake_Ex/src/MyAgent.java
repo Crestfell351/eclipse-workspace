@@ -5,40 +5,6 @@ import java.util.*;
 
 import za.ac.wits.snake.DevelopmentAgent;
 
-/**
- * MyAgent is an AI agent for a snake game that extends the DevelopmentAgent class.
- * It uses the Alpha-Beta pruning algorithm to determine the best move for the snake
- * to reach the apple while avoiding obstacles, zombies, and other snakes.
- * 
- * The main method initializes the agent and starts the game loop.
- * 
- * The run method reads the game state from standard input, including the number of snakes,
- * the game board dimensions, the positions of obstacles, zombies, and snakes, and the position
- * of the apple. It then calculates the best move for the snake using the Alpha-Beta pruning algorithm
- * and prints the move to standard output.
- * 
- * The getCurrentDirection method determines the current direction of the snake based on the positions
- * of its head and the first body segment.
- * 
- * The alphaBeta method implements the Alpha-Beta pruning algorithm to calculate the best move for the snake.
- * It recursively evaluates the game state to a specified depth and returns the best move.
- * 
- * The evaluateState method evaluates the game state using a simple heuristic: the Manhattan distance to the apple.
- * 
- * The predictSnakePosition method predicts the future position of a snake based on its current position and direction.
- * 
- * The predictZombiePosition method predicts the future position of a zombie based on its current position and the target position.
- * 
- * The heuristic method calculates the Manhattan distance between two points.
- * 
- * The reconstructPath method reconstructs the path from a given node to the root node and returns the direction of the first move.
- * 
- * The Node class represents a node in the search tree used by the Alpha-Beta pruning algorithm.
- * 
- * The openSpaceHeuristic method calculates the number of open spaces around a given position.
- * 
- * The floodFill method performs a flood fill algorithm to determine if there are enough open spaces around a given position.
- */
 public class MyAgent extends DevelopmentAgent {
 
     public static void main(String args[]) {
@@ -87,7 +53,6 @@ public class MyAgent extends DevelopmentAgent {
 
                 int mySnakeNum = Integer.parseInt(br.readLine());
                 Set<String> snakes = new HashSet<>();
-                List<int[]> snakeHeads = new ArrayList<>();
                 int[] mySnakeHead = null;
                 int[] mySnakeFirstSegment = null;
                 for (int i = 0; i < nSnakes; i++) {
@@ -96,7 +61,6 @@ public class MyAgent extends DevelopmentAgent {
                         String[] parts = snakeLine.split(" ");
                         int headX = Integer.parseInt(parts[3].split(",")[0]);
                         int headY = Integer.parseInt(parts[3].split(",")[1]);
-                        snakeHeads.add(new int[]{headX, headY});
                         if (i == mySnakeNum) {
                             mySnakeHead = new int[]{headX, headY};
                             if (parts.length > 4) {
@@ -114,8 +78,8 @@ public class MyAgent extends DevelopmentAgent {
                 // Determine the current direction of the snake
                 int currentDirection = getCurrentDirection(mySnakeHead, mySnakeFirstSegment);
 
-                // Calculate move using Alpha-Beta Pruning
-                int move = alphaBeta(mySnakeHead, appleX, appleY, obstacles, zombies, snakes, snakeHeads, width, height, currentDirection, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
+                // Calculate move
+                int move = calculateMove(mySnakeHead, appleX, appleY, obstacles, zombies, snakes, width, height, currentDirection);
                 System.out.println(move);
             }
         } catch (IOException e) {
@@ -136,34 +100,26 @@ public class MyAgent extends DevelopmentAgent {
         return -1; // Unknown direction
     }
 
-    private int alphaBeta(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, Set<String> zombies, Set<String> snakes, List<int[]> snakeHeads, int width, int height, int currentDirection, int depth, int alpha, int beta, boolean maximizingPlayer) {
-        if (depth == 0) {
-            return evaluateState(mySnakeHead, appleX, appleY, obstacles, zombies, snakes, width, height);
-        }
-
+    private int calculateMove(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, Set<String> zombies, Set<String> snakes, int width, int height, int currentDirection) {
         int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
-        if (maximizingPlayer) {
-            int maxEval = Integer.MIN_VALUE;
-            int bestMove = currentDirection;
+        PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
+        Set<String> closedSet = new HashSet<>();
+        openSet.add(new Node(mySnakeHead[0], mySnakeHead[1], 0, heuristic(mySnakeHead[0], mySnakeHead[1], appleX, appleY), null));
+
+        while (!openSet.isEmpty()) {
+            Node current = openSet.poll();
+            if (current.x == appleX && current.y == appleY) {
+                return reconstructPath(current);
+            }
+
+            closedSet.add(current.x + "," + current.y);
+
             for (int i = 0; i < directions.length; i++) {
-                int newX = mySnakeHead[0] + directions[i][0];
-                int newY = mySnakeHead[1] + directions[i][1];
+                int newX = current.x + directions[i][0];
+                int newY = current.y + directions[i][1];
                 String newPos = newX + "," + newY;
 
-                if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || snakes.contains(newPos) || zombies.contains(newPos)) {
-                    continue;
-                }
-
-                // Predict future snake positions
-                boolean futureSnakeCollision = false;
-                for (int[] snakeHead : snakeHeads) {
-                    int[] futureSnakePos = predictSnakePosition(snakeHead, directions[i]);
-                    if (futureSnakePos[0] == newX && futureSnakePos[1] == newY) {
-                        futureSnakeCollision = true;
-                        break;
-                    }
-                }
-                if (futureSnakeCollision) {
+                if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || snakes.contains(newPos) || zombies.contains(newPos) || closedSet.contains(newPos)) {
                     continue;
                 }
 
@@ -181,103 +137,32 @@ public class MyAgent extends DevelopmentAgent {
                     continue;
                 }
 
-                // Avoid apple collision with other snakes
-                if (newX == appleX && newY == appleY) {
-                    boolean appleCollision = false;
-                    for (int[] snakeHead : snakeHeads) {
-                        if (snakeHead[0] == appleX && snakeHead[1] == appleY) {
-                            appleCollision = true;
-                            break;
-                        }
-                    }
-                    if (appleCollision) {
-                        continue;
-                    }
-                }
-
-                int[] newHead = {newX, newY};
-                int eval = alphaBeta(newHead, appleX, appleY, obstacles, zombies, snakes, snakeHeads, width, height, i, depth - 1, alpha, beta, false);
-                if (eval > maxEval) {
-                    maxEval = eval;
-                    bestMove = i;
-                }
-                alpha = Math.max(alpha, eval);
-                if (beta <= alpha) {
-                    break;
-                }
+                int tentativeG = current.g + 1;
+                Node neighbor = new Node(newX, newY, tentativeG, heuristic(newX, newY, appleX, appleY), current);
+                openSet.add(neighbor);
             }
-            return bestMove;
-        } else {
-            int minEval = Integer.MAX_VALUE;
-            for (int i = 0; i < directions.length; i++) {
-                int newX = mySnakeHead[0] + directions[i][0];
-                int newY = mySnakeHead[1] + directions[i][1];
-                String newPos = newX + "," + newY;
-
-                if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || snakes.contains(newPos) || zombies.contains(newPos)) {
-                    continue;
-                }
-
-                // Predict future snake positions
-                boolean futureSnakeCollision = false;
-                for (int[] snakeHead : snakeHeads) {
-                    int[] futureSnakePos = predictSnakePosition(snakeHead, directions[i]);
-                    if (futureSnakePos[0] == newX && futureSnakePos[1] == newY) {
-                        futureSnakeCollision = true;
-                        break;
-                    }
-                }
-                if (futureSnakeCollision) {
-                    continue;
-                }
-
-                // Predict future zombie positions
-                boolean futureZombieCollision = false;
-                for (String zombie : zombies) {
-                    int[] zombieCoords = Arrays.stream(zombie.split(",")).mapToInt(Integer::parseInt).toArray();
-                    int[] futureZombiePos = predictZombiePosition(zombieCoords, mySnakeHead);
-                    if (futureZombiePos[0] == newX && futureZombiePos[1] == newY) {
-                        futureZombieCollision = true;
-                        break;
-                    }
-                }
-                if (futureZombieCollision) {
-                    continue;
-                }
-
-                // Avoid apple collision with other snakes
-                if (newX == appleX && newY == appleY) {
-                    boolean appleCollision = false;
-                    for (int[] snakeHead : snakeHeads) {
-                        if (snakeHead[0] == appleX && snakeHead[1] == appleY) {
-                            appleCollision = true;
-                            break;
-                        }
-                    }
-                    if (appleCollision) {
-                        continue;
-                    }
-                }
-
-                int[] newHead = {newX, newY};
-                int eval = alphaBeta(newHead, appleX, appleY, obstacles, zombies, snakes, snakeHeads, width, height, i, depth - 1, alpha, beta, true);
-                minEval = Math.min(minEval, eval);
-                beta = Math.min(beta, eval);
-                if (beta <= alpha) {
-                    break;
-                }
-            }
-            return minEval;
         }
-    }
 
-    private int evaluateState(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, Set<String> zombies, Set<String> snakes, int width, int height) {
-        // Simple evaluation function: Manhattan distance to the apple
-        return -heuristic(mySnakeHead[0], mySnakeHead[1], appleX, appleY);
-    }
+        // If no path found, use Open Space Heuristic and Flood Fill
+        int bestMove = currentDirection;
+        int maxOpenSpaces = -1;
+        for (int i = 0; i < directions.length; i++) {
+            int newX = mySnakeHead[0] + directions[i][0];
+            int newY = mySnakeHead[1] + directions[i][1];
+            String newPos = newX + "," + newY;
 
-    private int[] predictSnakePosition(int[] snakeHead, int[] direction) {
-        return new int[]{snakeHead[0] + direction[0], snakeHead[1] + direction[1]};
+            if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || snakes.contains(newPos) || zombies.contains(newPos)) {
+                continue;
+            }
+
+            int openSpaces = openSpaceHeuristic(newX, newY, width, height, obstacles, snakes, zombies);
+            if (openSpaces > maxOpenSpaces && floodFill(newX, newY, width, height, obstacles, snakes, zombies)) {
+                maxOpenSpaces = openSpaces;
+                bestMove = i;
+            }
+        }
+
+        return bestMove;
     }
 
     private int[] predictZombiePosition(int[] zombie, int[] target) {
