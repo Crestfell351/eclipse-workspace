@@ -322,19 +322,32 @@ public class MyAgent extends DevelopmentAgent {
         int dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1);
         int sx = x1 < x2 ? 1 : -1, sy = y1 < y2 ? 1 : -1;
         int err = dx - dy;
+        int[] lastPoint = new int[]{x1, y1};
     
         while (true) {
-            points.add(new int[]{x1, y1});
+            int[] newPoint = new int[]{x1, y1};
+            if (!points.isEmpty() && Arrays.equals(points.get(points.size() - 1), newPoint)) {
+                break; // Prevent turning back on itself
+            }
+            points.add(newPoint);
             if (x1 == x2 && y1 == y2) break;
             int e2 = 2 * err;
             if (e2 > -dy) {
                 err -= dy;
                 x1 += sx;
             }
+            if (x1 == x2 && y1 == y2) {
+                newPoint = new int[]{x1, y1};
+                if (!Arrays.equals(lastPoint, newPoint)) {
+                    points.add(newPoint);
+                }
+                break;
+            }
             if (e2 < dx) {
                 err += dx;
                 y1 += sy;
             }
+            lastPoint = new int[]{x1, y1};
         }
         return points;
     }
