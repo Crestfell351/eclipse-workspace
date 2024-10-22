@@ -106,7 +106,7 @@ public class MyAgent extends DevelopmentAgent {
                 int currentDirection = getCurrentDirection(mySnakeHead, mySnakeFirstSegment);
 
                 // Calculate move using A* algorithm
-                int move = calculateMove(mySnakeHead, appleX, appleY, obstacles, zombies, snakePositions, width, height, currentDirection, snakes);
+                int move = calculateMove(mySnakeHead, appleX, appleY, obstacles, zombies, snakePositions, snakes, width, height, currentDirection);
                 System.out.println(move);
             }
         } catch (IOException e) {
@@ -127,7 +127,7 @@ public class MyAgent extends DevelopmentAgent {
         return -1; // Unknown direction
     }
 
-    private int calculateMove(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, List<int[]> zombies, Set<String> snakePositions, int width, int height, int currentDirection, Map<Integer, List<int[]>> snakes) {
+    private int calculateMove(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, List<int[]> zombies, Set<String> snakePositions, Map<Integer, List<int[]>> snakes, int width, int height, int currentDirection) {
         int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
         PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
         Set<String> closedSet = new HashSet<>();
