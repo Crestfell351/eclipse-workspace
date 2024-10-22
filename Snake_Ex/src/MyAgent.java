@@ -42,13 +42,12 @@ public class MyAgent extends DevelopmentAgent {
                 }
 
                 // Read zombies
-                Set<String> zombies = new HashSet<>();
+                List<int[]> zombies = new ArrayList<>();
                 for (int i = 0; i < 3; i++) {
                     String zom = br.readLine();
                     String[] points = zom.split(" ");
-                    for (String point : points) {
-                        zombies.add(point);
-                    }
+                    int[] zombieHead = new int[]{Integer.parseInt(points[0].split(",")[0]), Integer.parseInt(points[0].split(",")[1])};
+                    zombies.add(zombieHead);
                 }
 
                 int mySnakeNum = Integer.parseInt(br.readLine());
@@ -100,7 +99,7 @@ public class MyAgent extends DevelopmentAgent {
         return -1; // Unknown direction
     }
 
-    private int calculateMove(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, Set<String> zombies, Set<String> snakes, int width, int height, int currentDirection) {
+    private int calculateMove(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, List<int[]> zombies, Set<String> snakes, int width, int height, int currentDirection) {
         int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
         PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
         Set<String> closedSet = new HashSet<>();
@@ -119,7 +118,20 @@ public class MyAgent extends DevelopmentAgent {
                 int newY = current.y + directions[i][1];
                 String newPos = newX + "," + newY;
 
-                if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || zombies.contains(newPos) || snakes.contains(newPos) || closedSet.contains(newPos)) {
+                if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || snakes.contains(newPos) || closedSet.contains(newPos)) {
+                    continue;
+                }
+
+                // Predict future zombie positions
+                boolean futureZombieCollision = false;
+                for (int[] zombie : zombies) {
+                    int[] futureZombiePos = predictZombiePosition(zombie, mySnakeHead);
+                    if (futureZombiePos[0] == newX && futureZombiePos[1] == newY) {
+                        futureZombieCollision = true;
+                        break;
+                    }
+                }
+                if (futureZombieCollision) {
                     continue;
                 }
 
@@ -130,6 +142,16 @@ public class MyAgent extends DevelopmentAgent {
         }
 
         return currentDirection; // Default to current direction if no path found
+    }
+
+    private int[] predictZombiePosition(int[] zombie, int[] target) {
+        int dx = target[0] - zombie[0];
+        int dy = target[1] - zombie[1];
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return new int[]{zombie[0] + Integer.signum(dx), zombie[1]};
+        } else {
+            return new int[]{zombie[0], zombie[1] + Integer.signum(dy)};
+        }
     }
 
     private int heuristic(int x1, int y1, int x2, int y2) {
