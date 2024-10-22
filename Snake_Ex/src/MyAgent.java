@@ -134,24 +134,24 @@ public class MyAgent extends DevelopmentAgent {
         Map<String, Integer> gScoreMap = new HashMap<>();
         openSet.add(new Node(mySnakeHead[0], mySnakeHead[1], 0, heuristic(mySnakeHead[0], mySnakeHead[1], appleX, appleY), null));
         gScoreMap.put(mySnakeHead[0] + "," + mySnakeHead[1], 0);
-
+    
         while (!openSet.isEmpty()) {
             Node current = openSet.poll();
             if (current.x == appleX && current.y == appleY) {
                 return reconstructPath(current);
             }
-
+    
             closedSet.add(current.x + "," + current.y);
-
+    
             for (int i = 0; i < directions.length; i++) {
                 int newX = current.x + directions[i][0];
                 int newY = current.y + directions[i][1];
                 String newPos = newX + "," + newY;
-
+    
                 if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || closedSet.contains(newPos) || snakePositions.contains(newPos)) {
                     continue;
                 }
-
+    
                 boolean collision = false;
                 for (int[] zombie : zombies) {
                     int[] futureZombiePos = predictZombiePosition(zombie, mySnakeHead);
@@ -161,29 +161,29 @@ public class MyAgent extends DevelopmentAgent {
                     }
                 }
                 if (collision) continue;
-
+    
                 int tentativeG = current.g + 1;
                 if (gScoreMap.containsKey(newPos) && tentativeG >= gScoreMap.get(newPos)) {
                     continue;
                 }
-
+    
                 gScoreMap.put(newPos, tentativeG);
                 Node neighbor = new Node(newX, newY, tentativeG, heuristic(newX, newY, appleX, appleY), current);
                 openSet.add(neighbor);
             }
         }
-
+    
         int bestMove = currentDirection;
         int maxOpenSpaces = -1;
         for (int i = 0; i < directions.length; i++) {
             int newX = mySnakeHead[0] + directions[i][0];
             int newY = mySnakeHead[1] + directions[i][1];
             String newPos = newX + "," + newY;
-
+    
             if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || snakePositions.contains(newPos)) {
                 continue;
             }
-
+    
             boolean collision = false;
             for (int[] zombie : zombies) {
                 int[] futureZombiePos = predictZombiePosition(zombie, mySnakeHead);
@@ -193,14 +193,14 @@ public class MyAgent extends DevelopmentAgent {
                 }
             }
             if (collision) continue;
-
+    
             int openSpaces = openSpaceHeuristic(newX, newY, width, height, obstacles, snakes, zombies);
             if (openSpaces > maxOpenSpaces && floodFill(newX, newY, width, height, obstacles, snakes, zombies)) {
                 maxOpenSpaces = openSpaces;
                 bestMove = i;
             }
         }
-
+    
         return bestMove;
     }
 
@@ -270,7 +270,7 @@ public class MyAgent extends DevelopmentAgent {
         queue.add(new int[]{x, y});
         int openSpaces = 0;
         int maxProximity = 5; // Limit the proximity to walls or boundaries
-
+    
         while (!queue.isEmpty()) {
             int[] current = queue.poll();
             int curX = current[0];
@@ -293,7 +293,7 @@ public class MyAgent extends DevelopmentAgent {
                 if (collision) break;
             }
             if (collision) continue;
-
+    
             for (int[] zombie : zombies) {
                 if (zombie[0] == curX && zombie[1] == curY) {
                     collision = true;
@@ -301,7 +301,7 @@ public class MyAgent extends DevelopmentAgent {
                 }
             }
             if (collision) continue;
-
+    
             visited[curX][curY] = true;
             openSpaces++;
             int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
@@ -313,7 +313,7 @@ public class MyAgent extends DevelopmentAgent {
                 }
             }
         }
-
+    
         return openSpaces > 5; // Reduced threshold to avoid small enclosed areas
     }
 
