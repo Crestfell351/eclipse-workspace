@@ -5,6 +5,40 @@ import java.util.*;
 
 import za.ac.wits.snake.DevelopmentAgent;
 
+/**
+ * MyAgent is an AI agent for a snake game that extends the DevelopmentAgent class.
+ * It uses the Alpha-Beta pruning algorithm to determine the best move for the snake
+ * to reach the apple while avoiding obstacles, zombies, and other snakes.
+ * 
+ * The main method initializes the agent and starts the game loop.
+ * 
+ * The run method reads the game state from standard input, including the number of snakes,
+ * the game board dimensions, the positions of obstacles, zombies, and snakes, and the position
+ * of the apple. It then calculates the best move for the snake using the Alpha-Beta pruning algorithm
+ * and prints the move to standard output.
+ * 
+ * The getCurrentDirection method determines the current direction of the snake based on the positions
+ * of its head and the first body segment.
+ * 
+ * The alphaBeta method implements the Alpha-Beta pruning algorithm to calculate the best move for the snake.
+ * It recursively evaluates the game state to a specified depth and returns the best move.
+ * 
+ * The evaluateState method evaluates the game state using a simple heuristic: the Manhattan distance to the apple.
+ * 
+ * The predictSnakePosition method predicts the future position of a snake based on its current position and direction.
+ * 
+ * The predictZombiePosition method predicts the future position of a zombie based on its current position and the target position.
+ * 
+ * The heuristic method calculates the Manhattan distance between two points.
+ * 
+ * The reconstructPath method reconstructs the path from a given node to the root node and returns the direction of the first move.
+ * 
+ * The Node class represents a node in the search tree used by the Alpha-Beta pruning algorithm.
+ * 
+ * The openSpaceHeuristic method calculates the number of open spaces around a given position.
+ * 
+ * The floodFill method performs a flood fill algorithm to determine if there are enough open spaces around a given position.
+ */
 public class MyAgent extends DevelopmentAgent {
 
     public static void main(String args[]) {
