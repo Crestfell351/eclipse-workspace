@@ -32,29 +32,27 @@ public class MyAgent extends DevelopmentAgent {
                 int appleY = Integer.parseInt(apple.split(" ")[1]);
 
                 // Read obstacles
-                List<int[]> obstacles = new ArrayList<>();
+                Set<String> obstacles = new HashSet<>();
                 for (int i = 0; i < 3; i++) {
                     String obs = br.readLine();
                     String[] points = obs.split(" ");
                     for (String point : points) {
-                        String[] coords = point.split(",");
-                        obstacles.add(new int[]{Integer.parseInt(coords[0]), Integer.parseInt(coords[1])});
+                        obstacles.add(point);
                     }
                 }
 
                 // Read zombies
-                List<int[]> zombies = new ArrayList<>();
+                Set<String> zombies = new HashSet<>();
                 for (int i = 0; i < 3; i++) {
                     String zom = br.readLine();
                     String[] points = zom.split(" ");
                     for (String point : points) {
-                        String[] coords = point.split(",");
-                        zombies.add(new int[]{Integer.parseInt(coords[0]), Integer.parseInt(coords[1])});
+                        zombies.add(point);
                     }
                 }
 
                 int mySnakeNum = Integer.parseInt(br.readLine());
-                List<int[]> snakes = new ArrayList<>();
+                Set<String> snakes = new HashSet<>();
                 int[] mySnakeHead = null;
                 int[] mySnakeFirstSegment = null;
                 for (int i = 0; i < nSnakes; i++) {
@@ -70,8 +68,9 @@ public class MyAgent extends DevelopmentAgent {
                                 int firstSegmentY = Integer.parseInt(parts[4].split(",")[1]);
                                 mySnakeFirstSegment = new int[]{firstSegmentX, firstSegmentY};
                             }
-                        } else {
-                            snakes.add(new int[]{headX, headY});
+                        }
+                        for (int j = 3; j < parts.length; j++) {
+                            snakes.add(parts[j]);
                         }
                     }
                 }
@@ -101,50 +100,64 @@ public class MyAgent extends DevelopmentAgent {
         return -1; // Unknown direction
     }
 
-    private int calculateMove(int[] mySnakeHead, int appleX, int appleY, List<int[]> obstacles, List<int[]> zombies, List<int[]> snakes, int width, int height, int currentDirection) {
+    private int calculateMove(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, Set<String> zombies, Set<String> snakes, int width, int height, int currentDirection) {
         int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
-        int[] moveScores = new int[4];
-        Arrays.fill(moveScores, Integer.MAX_VALUE);
+        PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
+        Set<String> closedSet = new HashSet<>();
+        openSet.add(new Node(mySnakeHead[0], mySnakeHead[1], 0, heuristic(mySnakeHead[0], mySnakeHead[1], appleX, appleY), null));
 
-        for (int i = 0; i < directions.length; i++) {
-            int newX = mySnakeHead[0] + directions[i][0];
-            int newY = mySnakeHead[1] + directions[i][1];
-            if (isValidMove(newX, newY, width, height, obstacles, zombies, snakes)) {
-                moveScores[i] = Math.abs(newX - appleX) + Math.abs(newY - appleY); // Manhattan distance to apple
+        while (!openSet.isEmpty()) {
+            Node current = openSet.poll();
+            if (current.x == appleX && current.y == appleY) {
+                return reconstructPath(current);
+            }
+
+            closedSet.add(current.x + "," + current.y);
+
+            for (int i = 0; i < directions.length; i++) {
+                int newX = current.x + directions[i][0];
+                int newY = current.y + directions[i][1];
+                String newPos = newX + "," + newY;
+
+                if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || zombies.contains(newPos) || snakes.contains(newPos) || closedSet.contains(newPos)) {
+                    continue;
+                }
+
+                int tentativeG = current.g + 1;
+                Node neighbor = new Node(newX, newY, tentativeG, heuristic(newX, newY, appleX, appleY), current);
+                openSet.add(neighbor);
             }
         }
 
-        int bestMove = 0;
-        int minScore = moveScores[0];
-        for (int i = 1; i < moveScores.length; i++) {
-            if (moveScores[i] < minScore) {
-                minScore = moveScores[i];
-                bestMove = i;
-            }
-        }
-
-        return bestMove;
+        return currentDirection; // Default to current direction if no path found
     }
 
-    private boolean isValidMove(int x, int y, int width, int height, List<int[]> obstacles, List<int[]> zombies, List<int[]> snakes) {
-        if (x < 0 || x >= width || y < 0 || y >= height) {
-            return false; // Out of bounds
+    private int heuristic(int x1, int y1, int x2, int y2) {
+        return Math.abs(x1 - x2) + Math.abs(y1 - y2); // Manhattan distance
+    }
+
+    private int reconstructPath(Node node) {
+        Node current = node;
+        while (current.parent != null && current.parent.parent != null) {
+            current = current.parent;
         }
-        for (int[] obstacle : obstacles) {
-            if (obstacle[0] == x && obstacle[1] == y) {
-                return false; // Collision with obstacle
-            }
+        if (current.x > current.parent.x) return 3; // Right
+        if (current.x < current.parent.x) return 2; // Left
+        if (current.y > current.parent.y) return 1; // Down
+        if (current.y < current.parent.y) return 0; // Up
+        return -1; // Unknown direction
+    }
+
+    private static class Node {
+        int x, y, g, f;
+        Node parent;
+
+        Node(int x, int y, int g, int h, Node parent) {
+            this.x = x;
+            this.y = y;
+            this.g = g;
+            this.f = g + h;
+            this.parent = parent;
         }
-        for (int[] zombie : zombies) {
-            if (zombie[0] == x && zombie[1] == y) {
-                return false; // Collision with zombie
-            }
-        }
-        for (int[] snake : snakes) {
-            if (snake[0] == x && snake[1] == y) {
-                return false; // Collision with other snake
-            }
-        }
-        return true;
     }
 }
