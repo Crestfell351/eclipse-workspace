@@ -72,15 +72,25 @@ public class MyAgent extends DevelopmentAgent {
                         for (int j = 3; j < parts.length; j++) {
                             snakes.add(parts[j]);
                         }
+
+                        // Determine the current direction of the snake
+                        int currentDirection = getCurrentDirection(mySnakeHead, mySnakeFirstSegment);
+
+                        // Calculate move
+                        int move = calculateMove(mySnakeHead, appleX, appleY, obstacles, zombies, snakes, width, height, currentDirection);
+
+                        // Ensure the move does not crash into the top of the grid or other entities
+                        if ((move == 0 && mySnakeHead[1] == 0) || 
+                            (move == 1 && mySnakeHead[1] == height - 1) || 
+                            (move == 2 && mySnakeHead[0] == 0) || 
+                            (move == 3 && mySnakeHead[0] == width - 1) || 
+                            willCollide(mySnakeHead, move, obstacles, zombies, snakes)) {
+                            move = findSafeMove(mySnakeHead, obstacles, zombies, snakes, width, height, currentDirection);
+                        }
+
+                        System.out.println(move);
                     }
                 }
-
-                // Determine the current direction of the snake
-                int currentDirection = getCurrentDirection(mySnakeHead, mySnakeFirstSegment);
-
-                // Calculate move
-                int move = calculateMove(mySnakeHead, appleX, appleY, obstacles, zombies, snakes, width, height, currentDirection);
-                System.out.println(move);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -244,5 +254,29 @@ public class MyAgent extends DevelopmentAgent {
         }
 
         return openSpaces > 10; // Arbitrary threshold to avoid small enclosed areas
+    }
+
+    // Helper function to check for collisions
+    private boolean willCollide(int[] head, int move, Set<String> obstacles, Set<String> zombies, Set<String> snakes) {
+        int newX = head[0], newY = head[1];
+        switch (move) {
+            case 0: newY--; break; // Up
+            case 1: newY++; break; // Down
+            case 2: newX--; break; // Left
+            case 3: newX++; break; // Right
+        }
+        String newPos = newX + "," + newY;
+        return obstacles.contains(newPos) || zombies.contains(newPos) || snakes.contains(newPos);
+    }
+
+    // Helper function to find a safe move
+    private int findSafeMove(int[] head, Set<String> obstacles, Set<String> zombies, Set<String> snakes, int width, int height, int currentDirection) {
+        int[] moves = {0, 1, 2, 3}; // Up, Down, Left, Right
+        for (int move : moves) {
+            if (!willCollide(head, move, obstacles, zombies, snakes)) {
+                return move;
+            }
+        }
+        return currentDirection; // Default to current direction if no safe move is found
     }
 }
