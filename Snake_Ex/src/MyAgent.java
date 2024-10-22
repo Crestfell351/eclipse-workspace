@@ -141,7 +141,26 @@ public class MyAgent extends DevelopmentAgent {
             }
         }
 
-        return currentDirection; // Default to current direction if no path found
+        // If no path found, use Open Space Heuristic and Flood Fill
+        int bestMove = currentDirection;
+        int maxOpenSpaces = -1;
+        for (int i = 0; i < directions.length; i++) {
+            int newX = mySnakeHead[0] + directions[i][0];
+            int newY = mySnakeHead[1] + directions[i][1];
+            String newPos = newX + "," + newY;
+
+            if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || snakes.contains(newPos)) {
+                continue;
+            }
+
+            int openSpaces = openSpaceHeuristic(newX, newY, width, height, obstacles, snakes);
+            if (openSpaces > maxOpenSpaces && floodFill(newX, newY, width, height, obstacles, snakes)) {
+                maxOpenSpaces = openSpaces;
+                bestMove = i;
+            }
+        }
+
+        return bestMove;
     }
 
     private int[] predictZombiePosition(int[] zombie, int[] target) {
@@ -181,5 +200,47 @@ public class MyAgent extends DevelopmentAgent {
             this.f = g + h;
             this.parent = parent;
         }
+    }
+
+    private int openSpaceHeuristic(int x, int y, int width, int height, Set<String> obstacles, Set<String> snakes) {
+        int openSpaces = 0;
+        int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
+        for (int[] dir : directions) {
+            int newX = x + dir[0];
+            int newY = y + dir[1];
+            String newPos = newX + "," + newY;
+            if (newX >= 0 && newX < width && newY >= 0 && newY < height && !obstacles.contains(newPos) && !snakes.contains(newPos)) {
+                openSpaces++;
+            }
+        }
+        return openSpaces;
+    }
+
+    private boolean floodFill(int x, int y, int width, int height, Set<String> obstacles, Set<String> snakes) {
+        boolean[][] visited = new boolean[width][height];
+        Queue<int[]> queue = new LinkedList<>();
+        queue.add(new int[]{x, y});
+        int openSpaces = 0;
+
+        while (!queue.isEmpty()) {
+            int[] current = queue.poll();
+            int curX = current[0];
+            int curY = current[1];
+            if (curX < 0 || curX >= width || curY < 0 || curY >= height || visited[curX][curY]) {
+                continue;
+            }
+            String pos = curX + "," + curY;
+            if (obstacles.contains(pos) || snakes.contains(pos)) {
+                continue;
+            }
+            visited[curX][curY] = true;
+            openSpaces++;
+            int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
+            for (int[] dir : directions) {
+                queue.add(new int[]{curX + dir[0], curY + dir[1]});
+            }
+        }
+
+        return openSpaces > 10; // Arbitrary threshold to avoid small enclosed areas
     }
 }
