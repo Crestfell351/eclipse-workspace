@@ -53,6 +53,7 @@ public class MyAgent extends DevelopmentAgent {
 
                 int mySnakeNum = Integer.parseInt(br.readLine());
                 Set<String> snakes = new HashSet<>();
+                List<int[]> snakeHeads = new ArrayList<>();
                 int[] mySnakeHead = null;
                 int[] mySnakeFirstSegment = null;
                 for (int i = 0; i < nSnakes; i++) {
@@ -61,6 +62,7 @@ public class MyAgent extends DevelopmentAgent {
                         String[] parts = snakeLine.split(" ");
                         int headX = Integer.parseInt(parts[3].split(",")[0]);
                         int headY = Integer.parseInt(parts[3].split(",")[1]);
+                        snakeHeads.add(new int[]{headX, headY});
                         if (i == mySnakeNum) {
                             mySnakeHead = new int[]{headX, headY};
                             if (parts.length > 4) {
@@ -79,7 +81,7 @@ public class MyAgent extends DevelopmentAgent {
                 int currentDirection = getCurrentDirection(mySnakeHead, mySnakeFirstSegment);
 
                 // Calculate move
-                int move = calculateMove(mySnakeHead, appleX, appleY, obstacles, zombies, snakes, width, height, currentDirection);
+                int move = calculateMove(mySnakeHead, appleX, appleY, obstacles, zombies, snakes, snakeHeads, width, height, currentDirection);
                 System.out.println(move);
             }
         } catch (IOException e) {
@@ -100,7 +102,7 @@ public class MyAgent extends DevelopmentAgent {
         return -1; // Unknown direction
     }
 
-    private int calculateMove(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, Set<String> zombies, Set<String> snakes, int width, int height, int currentDirection) {
+    private int calculateMove(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, Set<String> zombies, Set<String> snakes, List<int[]> snakeHeads, int width, int height, int currentDirection) {
         int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
         PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
         Set<String> closedSet = new HashSet<>();
@@ -123,6 +125,19 @@ public class MyAgent extends DevelopmentAgent {
                     continue;
                 }
 
+                // Predict future snake positions
+                boolean futureSnakeCollision = false;
+                for (int[] snakeHead : snakeHeads) {
+                    int[] futureSnakePos = predictSnakePosition(snakeHead, directions[i]);
+                    if (futureSnakePos[0] == newX && futureSnakePos[1] == newY) {
+                        futureSnakeCollision = true;
+                        break;
+                    }
+                }
+                if (futureSnakeCollision) {
+                    continue;
+                }
+
                 // Predict future zombie positions
                 boolean futureZombieCollision = false;
                 for (String zombie : zombies) {
@@ -135,6 +150,20 @@ public class MyAgent extends DevelopmentAgent {
                 }
                 if (futureZombieCollision) {
                     continue;
+                }
+
+                // Avoid apple collision with other snakes
+                if (newX == appleX && newY == appleY) {
+                    boolean appleCollision = false;
+                    for (int[] snakeHead : snakeHeads) {
+                        if (snakeHead[0] == appleX && snakeHead[1] == appleY) {
+                            appleCollision = true;
+                            break;
+                        }
+                    }
+                    if (appleCollision) {
+                        continue;
+                    }
                 }
 
                 int tentativeG = current.g + 1;
@@ -163,6 +192,10 @@ public class MyAgent extends DevelopmentAgent {
         }
 
         return bestMove;
+    }
+
+    private int[] predictSnakePosition(int[] snakeHead, int[] direction) {
+        return new int[]{snakeHead[0] + direction[0], snakeHead[1] + direction[1]};
     }
 
     private int[] predictZombiePosition(int[] zombie, int[] target) {
