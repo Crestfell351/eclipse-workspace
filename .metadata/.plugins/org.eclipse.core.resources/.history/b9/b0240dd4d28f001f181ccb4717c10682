@@ -1,0 +1,161 @@
+import java.io.BufferedReader;
+
+import java.math.*;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Random;
+import za.ac.wits.snake.DevelopmentAgent;
+import java.util.ArrayList;
+
+public class MyAgent extends DevelopmentAgent {
+
+    public static void main(String args[]) {
+        MyAgent agent = new MyAgent();
+        MyAgent.start(agent, args);
+    }
+    public static class Node{    
+        int headX, headY;
+        int g_Cost, h_Cost, f_Cost;
+        Node parent;   
+        Node goal;
+            
+        public Node(int headX, int headY, int g_Cost, int h_Cost) {    
+            this.headX = headX;
+            this.headY = headY; 
+            this.g_Cost = g_Cost;
+            this.h_Cost = h_Cost;
+            this.f_Cost = g_Cost + h_Cost;
+            this.parent = null;   
+        }    
+    } 
+
+    @Override
+    public void run() {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {
+            String initString = br.readLine();
+            String[] temp = initString.split(" ");
+            int nSnakes = Integer.parseInt(temp[0]);
+
+            while (true) {
+                String line = br.readLine();
+                if (line.contains("Game Over")) {
+                    break;
+                }
+
+                String apple1 = line;
+                String[] apple = apple1.split(" ");
+                int appleX = Integer.parseInt(apple[0]);
+        		int appleY = Integer.parseInt(apple[1]);
+        		
+                
+                //do stuff with apples
+
+                // read in obstacles and do something with them!
+        		
+            
+        		int [][] obstacles;
+                int nObstacles = 3;
+                obstacles = new int[nObstacles][2];
+                for (int obstacle = 0; obstacle < nObstacles; obstacle++) {
+                    String obs = br.readLine(); //16,32 16,33 16,34 16,35 16,36
+                    String[] coords = obs.split(" "); // ["35,6", "24,5"]
+//                    for (String pair:coords) {
+//                    	String[] pairArr= pair.split(",");
+//                    	int y= Integer.parseInt(pairArr[0]);
+//                    	int x= Integer.parseInt(pairArr[1]);
+//                    	obstacles[y][x]=3;
+//                    }
+                    
+                  
+                }
+
+                // read in zombies and do something with them!
+                int nZombies = 3;
+                for (int zombie = 0; zombie < nZombies; zombie++) {
+                    String zom = br.readLine();
+//                    String[] zombies = zom.split(" ");
+//                    int zombiesX = Integer.parseInt(zombies[0]);
+//                    int zombiesY = Integer.parseInt(zombies[1]);
+                    /// do something with zom
+                }
+            
+                int move = 0;
+                
+                int mySnakeNum = Integer.parseInt(br.readLine());
+                String MySnakeVals =  "";
+                for (int i = 0; i < nSnakes; i++) {
+                    String snakeLine = br.readLine();
+                    if (i == mySnakeNum) {
+                        //hey! That's me :)
+                    	MySnakeVals = snakeLine;
+                    	//System.out.println(MySnakeVals);
+                    	//System.err.println(MySnakeVals);
+                    }
+                    //alive 5 0 37,24 41,24
+                    //do stuff with other snakes
+                }
+                //finished reading, calculate move:
+                String[] deets = MySnakeVals.split(",");
+                int headX = Integer.parseInt(deets[0].substring(deets[0].length() - 2).trim());
+                int headY = Integer.parseInt(deets[1].substring(0,2).trim());
+                move = direction(headX, headY, appleX, appleY);
+//                move  = 5;
+             
+                System.out.println(move);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+//    public static int fCost (int g_Cost, int h_Cost) {
+//    	return g_Cost + h_Cost;
+//    }
+    
+  
+    static int direction(int headX, int headY, int appleX, int appleY) {
+        int Xdistance = Math.abs(headX - appleX);
+        int Ydistance =  Math.abs(headY - appleY);
+        int h_Cost = Xdistance + Ydistance;
+        int g_Cost = Math.abs(appleX - headX) + Math.abs(appleY - headY);
+        int f_Cost = h_Cost + g_Cost;
+        
+        
+        if(Xdistance>Ydistance){
+           if (appleX > headX && appleY < headY) {
+            return 3;
+        }
+
+        else if (appleX < headX && appleY >= headY) {
+            return 2;
+        }
+        else if (appleX > headX && appleY <= headY) {
+            return 3;
+        }
+
+        else if (appleX < headX && appleY > headY) {
+            return 2;
+        } 
+     }
+
+        else if(Xdistance<=Ydistance){
+           if (appleX > headX && appleY < headY) {
+            return 0;
+        }
+
+        else if (appleX < headX && appleY >= headY) {
+            return 1;
+        }
+        else if (appleX > headX && appleY <= headY) {
+            return 0;
+        }
+
+        else if (appleX < headX && appleY > headY) {
+            return 1;
+        } 
+       
+        }
+		return -1;
+    }
+    
+}
