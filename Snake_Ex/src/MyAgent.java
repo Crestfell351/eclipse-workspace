@@ -1,60 +1,15 @@
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
 import za.ac.wits.snake.DevelopmentAgent;
-
-class Snake {
-    boolean alive;
-    int length;
-    int kills;
-    int headX;
-    int headY;
-    Set<String> body;
-
-    public Snake(boolean alive, int length, int kills, int headX, int headY, Set<String> body) {
-        this.alive = alive;
-        this.length = length;
-        this.kills = kills;
-        this.headX = headX;
-        this.headY = headY;
-        this.body = body;
-    }
-}
-
-class Zombie {
-    Set<String> body;
-
-    public Zombie(Set<String> body) {
-        this.body = body;
-    }
-}
-
-class Apple {
-    int x;
-    int y;
-
-    public Apple(int x, int y) {
-        this.x = x;
-        this.y = y;
-    }
-}
-
-class Obstacle {
-    Set<String> points;
-
-    public Obstacle(Set<String> points) {
-        this.points = points;
-    }
-}
 
 public class MyAgent extends DevelopmentAgent {
 
-    private static final int WIDTH = 50;
-    private static final int HEIGHT = 50;
-    private static int lastMove = -1;
+    private static final Logger logger = Logger.getLogger(MyAgent.class.getName());
 
     public static void main(String args[]) {
         MyAgent agent = new MyAgent();
@@ -67,6 +22,8 @@ public class MyAgent extends DevelopmentAgent {
             String initString = br.readLine();
             String[] temp = initString.split(" ");
             int nSnakes = Integer.parseInt(temp[0]);
+            int width = Integer.parseInt(temp[1]);
+            int height = Integer.parseInt(temp[2]);
 
             while (true) {
                 String line = br.readLine();
@@ -74,80 +31,69 @@ public class MyAgent extends DevelopmentAgent {
                     break;
                 }
 
-                // Parse apple position
-                String[] applePos = line.split(" ");
-                Apple apple = new Apple(Integer.parseInt(applePos[0]), Integer.parseInt(applePos[1]));
+                String apple = line;
+                int appleX = Integer.parseInt(apple.split(" ")[0]);
+                int appleY = Integer.parseInt(apple.split(" ")[1]);
 
-                // Read in obstacles
-                Set<Obstacle> obstacles = new HashSet<>();
-                int nObstacles = 3;
-                for (int obstacle = 0; obstacle < nObstacles; obstacle++) {
+                // Read obstacles
+                Set<String> obstacles = new HashSet<>();
+                for (int i = 0; i < 3; i++) {
                     String obs = br.readLine();
-                    String[] obsPoints = obs.split(" ");
-                    Set<String> points = new HashSet<>();
-                    for (String point : obsPoints) {
-                        points.add(point);
+                    String[] points = obs.split(" ");
+                    for (String point : points) {
+                        obstacles.add(point);
                     }
-                    obstacles.add(new Obstacle(points));
                 }
 
-                // Read in zombies
-                Set<Zombie> zombies = new HashSet<>();
-                int nZombies = 3;
-                for (int zombie = 0; zombie < nZombies; zombie++) {
+                // Read zombies
+                Set<String> zombies = new HashSet<>();
+                for (int i = 0; i < 3; i++) {
                     String zom = br.readLine();
-                    String[] zomPoints = zom.split(" ");
-                    Set<String> points = new HashSet<>();
-                    for (String point : zomPoints) {
-                        points.add(point);
+                    String[] points = zom.split(" ");
+                    for (String point : points) {
+                        zombies.add(point);
                     }
-                    zombies.add(new Zombie(points));
                 }
 
-                // Read in snakes
-                Set<Snake> snakes = new HashSet<>();
                 int mySnakeNum = Integer.parseInt(br.readLine());
-                Snake mySnake = null;
+                Set<String> snakes = new HashSet<>();
+                int[] mySnakeHead = null;
+                int[] mySnakeFirstSegment = null;
                 for (int i = 0; i < nSnakes; i++) {
                     String snakeLine = br.readLine();
-                    String[] snakeParts = snakeLine.split(" ");
-                    boolean alive = snakeParts[0].equals("alive");
-                    int length = Integer.parseInt(snakeParts[1]);
-                    int kills = Integer.parseInt(snakeParts[2]);
-                    int[] headPos = parsePosition(snakeParts[3]);
-                    int headX = headPos[0];
-                    int headY = headPos[1];
-                    Set<String> body = new HashSet<>();
-                    for (int j = 4; j < snakeParts.length; j++) { // Fix: Start from index 4
-                        body.add(snakeParts[j]);
-                    }
-                    Snake snake = new Snake(alive, length, kills, headX, headY, body);
-                    snakes.add(snake);
-                    if (i == mySnakeNum) {
-                        mySnake = snake;
-                    }
-                }
-
-                // Calculate move
-                try {
-                    if (mySnake != null) {
-                        int move = calculateBestMove(mySnake, apple, obstacles, snakes, zombies);
-
-                        // If no safe move found, choose a random move
-                        if (move == -1) {
-                            log("No safe move found, choosing random move.");
-                            move = new Random().nextInt(4);
+                    if (snakeLine.startsWith("alive")) {
+                        String[] parts = snakeLine.split(" ");
+                        int headX = Integer.parseInt(parts[3].split(",")[0]);
+                        int headY = Integer.parseInt(parts[3].split(",")[1]);
+                        if (i == mySnakeNum) {
+                            mySnakeHead = new int[]{headX, headY};
+                            if (parts.length > 4) {
+                                int firstSegmentX = Integer.parseInt(parts[4].split(",")[0]);
+                                int firstSegmentY = Integer.parseInt(parts[4].split(",")[1]);
+                                mySnakeFirstSegment = new int[]{firstSegmentX, firstSegmentY};
+                            }
+                        }
+                        for (int j = 3; j < parts.length; j++) {
+                            snakes.add(parts[j]);
                         }
 
-                        if (move != lastMove) {
-                            log("Move chosen: " + move);
-                            lastMove = move;
+                        // Determine the current direction of the snake
+                        int currentDirection = getCurrentDirection(mySnakeHead, mySnakeFirstSegment);
+
+                        // Calculate move
+                        int move = calculateMove(mySnakeHead, appleX, appleY, obstacles, zombies, snakes, width, height, currentDirection);
+
+                        // Ensure the move does not crash into the top of the grid or other entities
+                        if ((move == 0 && mySnakeHead[1] == 0) || 
+                            (move == 1 && mySnakeHead[1] == height - 1) || 
+                            (move == 2 && mySnakeHead[0] == 0) || 
+                            (move == 3 && mySnakeHead[0] == width - 1) || 
+                            willCollide(mySnakeHead, move, obstacles, zombies, snakes, width, height)) {
+                            move = findSafeMove(mySnakeHead, obstacles, zombies, snakes, width, height, currentDirection);
                         }
 
                         System.out.println(move);
                     }
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    log("Error: ArrayIndexOutOfBounds at move calculation: " + e.getMessage());
                 }
             }
         } catch (IOException e) {
@@ -155,76 +101,214 @@ public class MyAgent extends DevelopmentAgent {
         }
     }
 
-    private int calculateBestMove(Snake mySnake, Apple apple, Set<Obstacle> obstacles, Set<Snake> snakes, Set<Zombie> zombies) {
-        int[] possibleMoves = {0, 1, 2, 3}; // Up, Down, Left, Right
-        int bestMove = -1;
-        int minDistanceToApple = Integer.MAX_VALUE;
+    private int getCurrentDirection(int[] head, int[] firstSegment) {
+        if (firstSegment == null) {
+            return -1; // Default direction if there's no body segment
+        }
+        int dx = head[0] - firstSegment[0];
+        int dy = head[1] - firstSegment[1];
+        if (dx == 1) return 3; // Right
+        if (dx == -1) return 2; // Left
+        if (dy == 1) return 1; // Down
+        if (dy == -1) return 0; // Up
+        return -1; // Unknown direction
+    }
 
-        for (int move : possibleMoves) {
-            if (move >= 0 && move < possibleMoves.length) { // Ensure move is within bounds
-                int[] newHeadPos = getNewHeadPosition(mySnake.headX, mySnake.headY, move);
-                log("Trying move: " + move + " -> new position: (" + newHeadPos[0] + "," + newHeadPos[1] + ")");
-                if (!willCollide(newHeadPos[0], newHeadPos[1], obstacles, snakes, zombies)) {
-                    int distanceToApple = Math.abs(newHeadPos[0] - apple.x) + Math.abs(newHeadPos[1] - apple.y);
-                    log("Move: " + move + " -> distance to apple: " + distanceToApple);
-                    if (distanceToApple < minDistanceToApple) {
-                        minDistanceToApple = distanceToApple;
-                        bestMove = move;
-                        log("Best move updated to: " + bestMove);
-                    }
-                } else {
-                    log("Collision detected for move: " + move);
+    private int calculateMove(int[] mySnakeHead, int appleX, int appleY, Set<String> obstacles, Set<String> zombies, Set<String> snakes, int width, int height, int currentDirection) {
+        int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
+        PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
+        Set<String> closedSet = new HashSet<>();
+        openSet.add(new Node(mySnakeHead[0], mySnakeHead[1], 0, heuristic(mySnakeHead[0], mySnakeHead[1], appleX, appleY), null));
+
+        while (!openSet.isEmpty()) {
+            Node current = openSet.poll();
+            if (current.x == appleX && current.y == appleY) {
+                return reconstructPath(current);
+            }
+
+            closedSet.add(current.x + "," + current.y);
+
+            for (int i = 0; i < directions.length; i++) {
+                int newX = current.x + directions[i][0];
+                int newY = current.y + directions[i][1];
+                String newPos = newX + "," + newY;
+
+                if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || snakes.contains(newPos) || zombies.contains(newPos) || closedSet.contains(newPos)) {
+                    continue;
                 }
+
+                // Predict future zombie positions
+                boolean futureZombieCollision = false;
+                for (String zombie : zombies) {
+                    int[] zombieCoords = Arrays.stream(zombie.split(",")).mapToInt(Integer::parseInt).toArray();
+                    int[] futureZombiePos = predictZombiePosition(zombieCoords, mySnakeHead);
+                    if (futureZombiePos[0] == newX && futureZombiePos[1] == newY) {
+                        futureZombieCollision = true;
+                        break;
+                    }
+                }
+                if (futureZombieCollision) {
+                    continue;
+                }
+
+                int tentativeG = current.g + 1;
+                Node neighbor = new Node(newX, newY, tentativeG, heuristic(newX, newY, appleX, appleY), current);
+                openSet.add(neighbor);
+            }
+        }
+
+        // If no path found, use Open Space Heuristic and Flood Fill
+        int bestMove = currentDirection;
+        int maxOpenSpaces = -1;
+        for (int i = 0; i < directions.length; i++) {
+            int newX = mySnakeHead[0] + directions[i][0];
+            int newY = mySnakeHead[1] + directions[i][1];
+            String newPos = newX + "," + newY;
+
+            if (newX < 0 || newX >= width || newY < 0 || newY >= height || obstacles.contains(newPos) || snakes.contains(newPos) || zombies.contains(newPos)) {
+                continue;
+            }
+
+            int openSpaces = openSpaceHeuristic(newX, newY, width, height, obstacles, snakes, zombies);
+            if (openSpaces > maxOpenSpaces && floodFill(newX, newY, width, height, obstacles, snakes, zombies)) {
+                maxOpenSpaces = openSpaces;
+                bestMove = i;
             }
         }
 
         return bestMove;
     }
 
-    private static boolean willCollide(int x, int y, Set<Obstacle> obstacles, Set<Snake> snakes, Set<Zombie> zombies) {
-        // Check for boundary collision
-        if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
-            return true;
-        }
-
-        String pos = x + "," + y;
-        for (Obstacle obstacle : obstacles) {
-            if (obstacle.points.contains(pos)) {
-                return true;
-            }
-        }
-        for (Snake snake : snakes) {
-            if (snake.body.contains(pos) || (snake.headX == x && snake.headY == y)) {
-                return true;
-            }
-        }
-        for (Zombie zombie : zombies) {
-            if (zombie.body.contains(pos)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static int[] getNewHeadPosition(int x, int y, int move) {
-        switch (move) {
-            case 0: return new int[]{x, y - 1}; // Up
-            case 1: return new int[]{x, y + 1}; // Down
-            case 2: return new int[]{x - 1, y}; // Left
-            case 3: return new int[]{x + 1, y}; // Right
-            default: return new int[]{x, y};
+    private int[] predictZombiePosition(int[] zombie, int[] target) {
+        int dx = target[0] - zombie[0];
+        int dy = target[1] - zombie[1];
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return new int[]{zombie[0] + Integer.signum(dx), zombie[1]};
+        } else {
+            return new int[]{zombie[0], zombie[1] + Integer.signum(dy)};
         }
     }
 
-    private static int[] parsePosition(String pos) {
-        String[] parts = pos.split(",");
-        if (parts.length != 2) {
-            throw new IllegalArgumentException("Invalid position format: " + pos);
-        }
-        return new int[]{Integer.parseInt(parts[0]), Integer.parseInt(parts[1])};
+    private int heuristic(int x1, int y1, int x2, int y2) {
+        return Math.abs(x1 - x2) + Math.abs(y1 - y2); // Manhattan distance
     }
 
-    private static void log(String message) {
-        System.err.println("log " + message);
+    private int reconstructPath(Node node) {
+        Node current = node;
+        while (current.parent != null && current.parent.parent != null) {
+            current = current.parent;
+        }
+        if (current.x > current.parent.x) return 3; // Right
+        if (current.x < current.parent.x) return 2; // Left
+        if (current.y > current.parent.y) return 1; // Down
+        if (current.y < current.parent.y) return 0; // Up
+        return -1; // Unknown direction
+    }
+
+    private static class Node {
+        int x, y, g, f;
+        Node parent;
+
+        Node(int x, int y, int g, int h, Node parent) {
+            this.x = x;
+            this.y = y;
+            this.g = g;
+            this.f = g + h;
+            this.parent = parent;
+        }
+    }
+
+    private int openSpaceHeuristic(int x, int y, int width, int height, Set<String> obstacles, Set<String> snakes, Set<String> zombies) {
+        int openSpaces = 0;
+        int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
+        for (int[] dir : directions) {
+            int newX = x + dir[0];
+            int newY = y + dir[1];
+            String newPos = newX + "," + newY;
+            if (newX >= 0 && newX < width && newY >= 0 && newY < height && !obstacles.contains(newPos) && !snakes.contains(newPos) && !zombies.contains(newPos)) {
+                openSpaces++;
+            }
+        }
+        return openSpaces;
+    }
+
+    private boolean floodFill(int x, int y, int width, int height, Set<String> obstacles, Set<String> snakes, Set<String> zombies) {
+        boolean[][] visited = new boolean[width][height];
+        Queue<int[]> queue = new LinkedList<>();
+        queue.add(new int[]{x, y});
+        int openSpaces = 0;
+
+        while (!queue.isEmpty()) {
+            int[] current = queue.poll();
+            int curX = current[0];
+            int curY = current[1];
+            if (curX < 0 || curX >= width || curY < 0 || curY >= height || visited[curX][curY]) {
+                continue;
+            }
+            String pos = curX + "," + curY;
+            if (obstacles.contains(pos) || snakes.contains(pos) || zombies.contains(pos)) {
+                continue;
+            }
+            visited[curX][curY] = true;
+            openSpaces++;
+            int[][] directions = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}}; // Up, Down, Left, Right
+            for (int[] dir : directions) {
+                queue.add(new int[]{curX + dir[0], curY + dir[1]});
+            }
+        }
+
+        return openSpaces > 10; // Arbitrary threshold to avoid small enclosed areas
+    }
+
+    // Helper function to check for collisions
+    private boolean willCollide(int[] head, int direction, Set<String> obstacles, Set<String> zombies, Set<String> snakes, int width, int height) {
+        int newX = head[0];
+        int newY = head[1];
+
+        switch (direction) {
+            case 0: newY--; break; // Up
+            case 1: newY++; break; // Down
+            case 2: newX--; break; // Left
+            case 3: newX++; break; // Right
+        }
+
+        // Check for out-of-bound collisions
+        if (newX < 0 || newX >= width || newY < 0 || newY >= height) {
+            logger.log(Level.INFO, "Collision with boundary at {0},{1}", new Object[]{newX, newY});
+            return true; // Out of bounds collision
+        }
+
+        String newPos = String.format("%d,%d", newX, newY);
+        boolean collision = obstacles.contains(newPos) || zombies.contains(newPos) || snakes.contains(newPos);
+
+        logger.log(Level.INFO, "Checking collision for move {0}: newPos={1}, collision={2}", new Object[]{direction, newPos, collision});
+        logger.log(Level.INFO, "Obstacles: {0}", obstacles);
+        logger.log(Level.INFO, "Zombies: {0}", zombies);
+        logger.log(Level.INFO, "Snakes: {0}", snakes);
+
+        if (obstacles.contains(newPos)) {
+            logger.log(Level.INFO, "Collision with obstacle at {0}", newPos);
+        }
+        if (zombies.contains(newPos)) {
+            logger.log(Level.INFO, "Collision with zombie at {0}", newPos);
+        }
+        if (snakes.contains(newPos)) {
+            logger.log(Level.INFO, "Collision with snake at {0}", newPos);
+        }
+
+        return collision;
+    }
+
+    // Helper function to find a safe move
+    private int findSafeMove(int[] head, Set<String> obstacles, Set<String> zombies, Set<String> snakes, int width, int height, int currentDirection) {
+        int[] moves = {0, 1, 2, 3}; // Up, Down, Left, Right
+        for (int move : moves) {
+            if (!willCollide(head, move, obstacles, zombies, snakes, width, height)) {
+                logger.log(Level.INFO, "Safe move found: {0}", move);
+                return move;
+            }
+        }
+        logger.log(Level.INFO, "No safe move found, defaulting to current direction: {0}", currentDirection);
+        return currentDirection; // Default to current direction if no safe move is found
     }
 }
